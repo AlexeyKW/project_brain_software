@@ -1,0 +1,37 @@
+name: brain-decay
+
+# Еженедельный job устаревания памяти (L2): anchor drift, ttl-истечения,
+# семантические дубликаты, кандидаты в archive/.
+# Ничего не удаляется молча: результат — decay-report.md, разбор — через PR.
+# Раскомментируйте при переходе на L2.
+
+on:
+  schedule:
+    - cron: "17 4 * * 1" # понедельник 04:17 UTC, вне пиковых минут
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # нужен для anchor drift
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install brain CLI
+        run: pip install .
+
+      - name: Decay report
+        run: brain decay --write
+
+      # Отчёт — обычный артефакт памяти: уходит в .brain/state/ и ревьюится PR'ом
+      # (auto-merge по политике policies.auto_merge: [status]). Вариант с issue:
+      # - name: Fail on findings
+      #   run: brain decay --strict

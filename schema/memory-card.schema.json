@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-brain.dev/schema/memory-card.schema.json",
+  "title": "Project Brain — единая карточка памяти",
+  "description": "YAML frontmatter карточки памяти. Все сущности (.brain/**) имеют один формат и различаются полем kind.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["id", "kind", "title", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]-\\d{3,4}$",
+      "description": "Стабильный идентификатор: D-0042 (decision), C-007 (constraint), F-… (fact), M-… (map-node), H-… (handoff), L-… (pointer), P-… (proposal), S-… (status/session)."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["decision", "constraint", "fact", "map-node", "status", "handoff", "pointer", "proposal", "session"]
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["proposed", "accepted", "superseded", "rejected"]
+    },
+    "supersedes": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z]-\\d{3,4}$" },
+      "description": "Явная замена прежних записей. Авто-разрешение конфликтов запрещено."
+    },
+    "origin": {
+      "type": "string",
+      "enum": ["human", "agent", "derived", "external"],
+      "description": "external — недоверенный ввод: рендерится как данные, никогда не попадает в инструкционную секцию HOT."
+    },
+    "verified_by": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Пусто ⇒ ai-inferred. Повышение trust — только человеком или зелёным CI."
+    },
+    "verified_at": { "type": ["string", "null"], "format": "date" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "anchors": {
+      "type": "array",
+      "description": "К чему привязано знание. Основа детекции anchor drift.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "description": "Путь или glob, напр. src/bus/**" },
+          "symbol": { "type": "string", "description": "Символ-якорь, напр. pkg/queue.Client" },
+          "blob": { "type": "string", "description": "git blob-хэш содержимого на момент верификации (допускается короткий)." }
+        },
+        "anyOf": [
+          { "required": ["path"] },
+          { "required": ["symbol"] }
+        ]
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": { "type": "string", "enum": ["commit", "test", "bench", "log", "ci", "pr", "issue"] },
+          "ref": { "type": "string" },
+          "cmd": { "type": "string" },
+          "result": { "type": "string", "enum": ["pass", "fail"] },
+          "at": { "type": "string" }
+        }
+      }
+    },
+    "scope": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Глобальные области монорепо, напр. services/* . Пусто = весь репозиторий."
+    },
+    "ttl": {
+      "type": "string",
+      "pattern": "^\\d+d$",
+      "description": "Время жизни записи, напр. 180d. Истечение → needs-review при decay."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "check": {
+      "type": "object",
+      "description": "Только для kind=constraint: машинная проверка. Без check ограничение считается soft.",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["dependency-absent", "grep-absent", "path-absent"] },
+        "scope": { "type": "string", "description": "Каталог/область проверки, напр. packages/core" },
+        "names": { "type": "array", "items": { "type": "string" }, "description": "dependency-absent: имена/glob-ы запрещённых зависимостей" },
+        "pattern": { "type": "string", "description": "grep-absent: запрещённый regex" },
+        "files": { "type": "string", "description": "grep-absent: glob файлов, напр. **/*.py" },
+        "paths": { "type": "array", "items": { "type": "string" }, "description": "path-absent: запрещённые glob-ы путей" }
+      }
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["blocking", "soft"],
+      "description": "Только для kind=constraint. blocking ломает CI при нарушении."
+    },
+    "statement": {
+      "type": "string",
+      "description": "Только для kind=constraint: одна проверяемая формулировка правила."
+    }
+  }
+}

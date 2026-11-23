@@ -1,0 +1,36 @@
+# Project Brain — манифест памяти репозитория
+schema_version: 1
+project: "project-brain"
+
+# Контекст — бюджет, а не свалка. Превышение — ошибка сборки.
+budgets:
+  hot: 2000          # токенов; профили: 800 / 2000 / 4000
+  card_words: 400    # лимит тела одной карточки
+token_chars: 3       # приближение: 1 токен ≈ 3 символа (рус/англ микс)
+
+# Агенты предлагают, люди утверждают.
+policies:
+  auto_merge: [handoff, status, session]
+  human_required: [decision, constraint, map-node]
+  bot_write_paths:
+    - ".brain/proposals/**"
+    - ".brain/sessions/**"
+  secrets_patterns:
+    - 'AKIA[0-9A-Z]{16}'
+    - '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+    - 'ghp_[A-Za-z0-9]{36}'
+    - 'sk-[A-Za-z0-9]{20,}'
+    - '(?i)(password|passwd|secret|api[_-]?key)\s*[:=]\s*[''"]?\S{8,}'
+
+# Generated-адаптеры, которые поддерживает `brain compile`.
+adapters:
+  - AGENTS.md
+
+# Монорепо/полирепо (L2+): глобальные области и федерация.
+scope: []
+imports: []          # [{repo: org/brain-base, version: "1.4.0"}]
+exports: []          # контрактная поверхность проекта
+
+decay:
+  interval: 7d       # еженедельный job: drift, ttl, дубликаты
+  ttl_default: 180d

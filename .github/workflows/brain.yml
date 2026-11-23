@@ -1,0 +1,51 @@
+name: brain
+
+# CI памяти: схема, бюджет HOT, секреты, исполняемые constraints, anchor drift,
+# синхронность generated-артефактов (HOT.md и адаптеров) с каноном.
+#
+# Политика записи (принцип «агенты предлагают, люди утверждают»):
+#   handoff | status | session      — авто-мерж (низкий риск)
+#   decision | constraint | map     — обязательный человек; закрепите в CODEOWNERS:
+#       .brain/constraints/  @your-team-leads
+#       .brain/decisions/    @your-team-leads
+# Бот-идентичность не должна трогать канонические пути — проверяйте дифф PR
+# (разрешены только .brain/proposals/** и .brain/sessions/**).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  brain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # нужен для --changed и anchor drift
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install brain CLI
+        run: pip install .[dev]
+
+      - name: CLI tests (golden)
+        run: python -m pytest tests/ -q
+
+      - name: Lint memory (schema, HOT budget, secrets)
+        run: brain lint --changed
+
+      - name: Verify constraints and anchor drift
+        run: brain verify --changed
+
+      - name: Check compiled artifacts are in sync
+        run: brain compile --check
+
+      # L2+: регресс «памяти» на золотых вопросах из .brain/evals/
+      # - name: Memory evals
+      #   run: brain evals --model local
